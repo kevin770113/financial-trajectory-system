@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Stage1Form from './components/Stage1Form';
 import Stage2Form from './components/Stage2Form';
@@ -8,7 +8,14 @@ import Dashboard from './components/Dashboard';
 function MainContent() {
   const { currentStage } = useApp();
 
-  // 改版：將生硬的工程/測量名詞換成平易近人的引導語
+  // 改版：監聽 currentStage，改變時自動滾動到頁面最頂部
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }, [currentStage]);
+
   const stages = [
     { num: 1, name: '現狀盤點' },
     { num: 2, name: '生活情境' },
