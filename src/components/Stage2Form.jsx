@@ -17,6 +17,7 @@ export default function Stage2Form() {
     },
     {
       id: 'monitorFreq',
+      // 改版：移除 [測量波動性焦慮] 標籤
       title: '2. 在非發薪日、無重大帳單待繳的日子裡，您平均每週主動登入查看銀行餘額或投資對帳單的頻率為？',
       options: [
         { value: 'A', text: '幾乎不會（0 次）。設定好自動化流程後極少主動查看。' },
@@ -27,6 +28,7 @@ export default function Stage2Form() {
     },
     {
       id: 'deferExpense',
+      // 改版：移除 [測量稀缺性壓力] 標籤
       title: '3. 回顧過去一年，您是否曾因為「預算考量或現金流吃緊」，而決定「遞延」具備必要或預防性的支出（如健康檢查、牙齒治療、預防性保養）？',
       options: [
         { value: 'A', text: '0 次。預防性支出皆按計畫執行，不受短期現金流影響。' },
@@ -70,8 +72,9 @@ export default function Stage2Form() {
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-sm border-t-4 border-primary">
-      <h2 className="text-2xl font-bold text-primary mb-2">第二階段：習慣與心理評估</h2>
-      <p className="text-gray-500 mb-6 text-sm">請依照您最真實的直覺作答，這將幫助系統量化您的心理負載。</p>
+      {/* 改版：柔化大標題與說明文字 */}
+      <h2 className="text-2xl font-bold text-primary mb-2">了解您的日常理財與生活情境</h2>
+      <p className="text-gray-500 mb-6 text-sm">以下幾個簡單的生活情境沒有標準答案，請依照您最真實的直覺作答即可。</p>
 
       <div className="space-y-8">
         {questions.map((q) => (
@@ -104,13 +107,13 @@ export default function Stage2Form() {
           onClick={() => setCurrentStage(1)}
           className="w-1/3 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
         >
-          回上一步
+          上一頁
         </button>
         <button 
           onClick={() => setCurrentStage(3)}
           className="w-2/3 bg-primary text-white py-3 rounded-lg font-semibold hover:bg-secondary transition-colors"
         >
-          前往分析與深挖
+          下一頁
         </button>
       </div>
     </div>
