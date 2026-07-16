@@ -1,17 +1,44 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
 export default function Stage1Form() {
   const { stage1Data, updateStage1, setCurrentStage } = useApp();
+  
+  // 為了自訂選單新增的狀態與 Ref
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     updateStage1({ [name]: value });
   };
 
+  // 點擊空白處關閉選單的監聽器
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 自訂選單的選項定義
+  const expenseOptions = [
+    { value: 'A', label: '顯著減少 (下降 20% 以上：如車貸/房貸清償)' },
+    { value: 'B', label: '維持平穩 (增減 10% 以內：無重大生活結構改變)' },
+    { value: 'C', label: '溫和增加 (增加 10% - 30%：隨通膨或小額支出調升)' },
+    { value: 'D', label: '結構性增加 (增加 30% 以上：如買房繳息、新生兒、長輩照護)' }
+  ];
+
+  const handleCustomSelect = (value) => {
+    updateStage1({ pastExpenseTrend: value });
+    setIsDropdownOpen(false);
+  };
+
   return (
     <div className="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-sm border-t-4 border-primary">
-      {/* 改版：柔化大標題與說明文字 */}
       <h2 className="text-2xl font-bold text-primary mb-2">讓我們了解您目前的財務輪廓</h2>
       <p className="text-gray-500 mb-6 text-sm">請填寫最接近真實狀況的概略數字，不需翻找精確對帳單。我們將透過這些基本資訊為您建立專屬的財務軌跡。</p>
 
@@ -41,13 +68,40 @@ export default function Stage1Form() {
             <div>
               <label className="block font-medium mb-1">4. 與 3 年前相比，目前家庭的「剛性支出」變化狀態是？</label>
               <p className="text-xs text-gray-500 mb-2">例如房貸、租金、基本家用或扶養費用的變化。</p>
-              <select name="pastExpenseTrend" value={stage1Data.pastExpenseTrend} onChange={handleChange} className="w-full border rounded-lg p-2 bg-white focus:ring-2 focus:ring-accent outline-none">
-                <option value="">請選擇...</option>
-                <option value="A">顯著減少 (下降 20% 以上：如車貸/房貸清償)</option>
-                <option value="B">維持平穩 (增減 10% 以內：無重大生活結構改變)</option>
-                <option value="C">溫和增加 (增加 10% - 30%：隨通膨或小額支出調升)</option>
-                <option value="D">結構性增加 (增加 30% 以上：如買房繳息、新生兒、長輩照護)</option>
-              </select>
+              
+              {/* 改版：自訂精緻下拉選單 */}
+              <div className="relative" ref={dropdownRef}>
+                <div 
+                  className={`w-full border rounded-lg p-3 bg-white focus:ring-2 focus:ring-accent outline-none cursor-pointer flex justify-between items-center ${
+                    isDropdownOpen ? 'ring-2 ring-accent border-accent' : ''
+                  }`}
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <span className={stage1Data.pastExpenseTrend ? "text-gray-800 text-sm" : "text-gray-400 text-sm"}>
+                    {stage1Data.pastExpenseTrend 
+                      ? expenseOptions.find(opt => opt.value === stage1Data.pastExpenseTrend)?.label 
+                      : "請點擊選擇..."}
+                  </span>
+                  <span className={`text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>▼</span>
+                </div>
+                
+                {isDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
+                    {expenseOptions.map((opt) => (
+                      <div 
+                        key={opt.value}
+                        className={`p-3 text-sm cursor-pointer border-b last:border-b-0 border-gray-100 transition-colors ${
+                          stage1Data.pastExpenseTrend === opt.value ? 'bg-accent/10 text-primary font-medium' : 'hover:bg-gray-50 text-gray-700'
+                        }`}
+                        onClick={() => handleCustomSelect(opt.value)}
+                      >
+                        {opt.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>
