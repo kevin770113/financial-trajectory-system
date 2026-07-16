@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --text-main: #333333;
+    --text-light: #666666;
+    --border-color: #e1e8ed;
+    --success: #27ae60;
+    --danger: #c0392b;
+    --backend-bg: #e8f4f8;
+  }
+  
+  body {
+    font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, sans-serif;
+  }
+}
