@@ -1,177 +1,260 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { TrendingUp, TrendingDown, CheckCircle2, AlertCircle, Info, ArrowRight } from 'lucide-react';
 
 export default function Dashboard() {
   const { stage1Data, stage2Data, computedMetrics, setCurrentStage } = useApp();
 
   if (!computedMetrics) {
-    return <div className="text-center p-10">資料運算中，請稍候...</div>;
+    return <div className="text-center p-10 text-gray-500">資料運算中，請稍候...</div>;
   }
 
-  // 解構變數以利排版
   const { 
     totalNetWorth, theoreticalSurplus, safeCashMonths, 
-    passiveCoverage, cagr, retentionRate, statusMap 
+    passiveCoverage, cagr, retentionRate 
   } = computedMetrics;
 
   const pastAssets = Number(stage1Data.pastAssets) || 0;
   const rigidExpense = Number(stage1Data.rigidExpense) || 0;
+  const safeCash = Number(stage1Data.safeCash) || 0;
   
-  // 簡易推算未來 10 年資產 (以現有總資產與留存資金投入，粗略以 CAGR 成長)
-  const future10YearsNetWorth = totalNetWorth * Math.pow(1 + (cagr / 100), 10) + ((theoreticalSurplus * (retentionRate / 100)) * 10);
-  // 簡易推算未來 10 年剛性支出膨脹 (依據第一階段選項給定膨脹係數)
+  // 支出膨脹係數
   let expenseMultiplier = 1;
   if (stage1Data.pastExpenseTrend === 'A') expenseMultiplier = 0.8;
   if (stage1Data.pastExpenseTrend === 'C') expenseMultiplier = 1.2;
   if (stage1Data.pastExpenseTrend === 'D') expenseMultiplier = 1.4;
-  const future10YearsExpense = rigidExpense * expenseMultiplier * Math.pow(1.02, 10); // 加上每年2%基礎通膨
 
-  const formatCurrency = (num) => Math.round(num).toLocaleString();
+  // --- 三種未來推演劇本 (簡易複利模型) ---
+  const baseGrowthRate = Math.max(cagr, 2); // 避免負值導致推演崩潰，最低抓 2%
+  
+  // 劇本一：維持現狀 (現有資產依原速度增長 + 現有留存資金單純累積)
+  const future10YearsNetWorth = totalNetWorth * Math.pow(1 + (baseGrowthRate / 100), 10) + ((theoreticalSurplus * (retentionRate / 100)) * 10);
+  const future10YearsExpense = rigidExpense * expenseMultiplier * Math.pow(1.02, 10); // 2% 基礎通膨
+  
+  // 劇本二：微幅調整 (修復漏水，將留存率拉高至 80%)
+  const futureMinorFix = totalNetWorth * Math.pow(1 + (baseGrowthRate / 100), 10) + ((theoreticalSurplus * 0.8) * 10);
+
+  // 劇本三：積極調整 (修復漏水 + 將超過6個月的安全現金轉入投資提高整體報酬率 3% + 投資健康延長高收入期多賺3年)
+  const optimizedGrowthRate = baseGrowthRate + 3;
+  const futureAggressive = totalNetWorth * Math.pow(1 + (optimizedGrowthRate / 100), 10) + ((theoreticalSurplus * 0.8) * 13);
+
+  const formatCurrency = (num) => Math.round(num || 0).toLocaleString();
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border-t-8 border-primary">
-        <h2 className="text-3xl font-bold text-primary mb-2 text-center">全人理財軌跡與客觀診斷報告</h2>
-        <p className="text-center text-gray-500 mb-8">基於客觀數據與行為慣性所推演的軌跡模型</p>
-
-        {/* 第一部分：軌跡時間軸 */}
-        <div className="mb-10">
-          <h3 className="text-xl font-bold text-secondary mb-4 border-l-4 border-accent pl-3">一、 全人軌跡時間軸</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 text-gray-700">
-                  <th className="p-3 border-b">時間維度</th>
-                  <th className="p-3 border-b">過去 (3年前基準)</th>
-                  <th className="p-3 border-b">目前現況</th>
-                  <th className="p-3 border-b">未來10年 (慣性延續)</th>
-                  <th className="p-3 border-b">狀態判定</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-3 border-b font-medium">總淨值規模</td>
-                  <td className="p-3 border-b">{formatCurrency(pastAssets)}</td>
-                  <td className="p-3 border-b text-primary font-bold">{formatCurrency(totalNetWorth)}</td>
-                  <td className="p-3 border-b">{formatCurrency(future10YearsNetWorth)}</td>
-                  <td className={`p-3 border-b font-bold ${cagr > 5 ? 'text-green-600' : 'text-yellow-600'}`}>
-                    年化成長 {cagr.toFixed(1)}%
-                  </td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className="p-3 border-b font-medium">剛性支出水位</td>
-                  <td className="p-3 border-b">-</td>
-                  <td className="p-3 border-b text-primary font-bold">{formatCurrency(rigidExpense)} / 年</td>
-                  <td className="p-3 border-b">{formatCurrency(future10YearsExpense)} / 年</td>
-                  <td className={`p-3 border-b font-bold ${expenseMultiplier > 1.1 ? 'text-red-600' : 'text-green-600'}`}>
-                    {expenseMultiplier > 1.1 ? '支出膨脹結構' : '紀律控制'}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="p-3 border-b font-medium">被動收入覆蓋率</td>
-                  <td className="p-3 border-b">-</td>
-                  <td className="p-3 border-b text-primary font-bold">{passiveCoverage.toFixed(1)}%</td>
-                  <td className="p-3 border-b">預期上升</td>
-                  <td className="p-3 border-b font-bold text-gray-600">依賴度移轉分析</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 第二部分：量化指標 */}
-        <div className="mb-10">
-          <h3 className="text-xl font-bold text-secondary mb-4 border-l-4 border-accent pl-3">二、 四大維度健康度量化指標</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* 卡片 1 */}
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-              <h4 className="font-bold text-primary mb-3 pb-2 border-b border-gray-300">1. 財務動能 (Momentum)</h4>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-600">實質資金留存率</span>
-                <span className={`font-bold ${retentionRate >= 70 ? 'text-green-600' : 'text-red-600'}`}>{retentionRate.toFixed(0)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">系統綜合判定</span>
-                <span className="font-bold">{statusMap.momentum}</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">*低於 70% 顯示系統存在隱性耗損，資金轉化率未達理論水準。</p>
-            </div>
-
-            {/* 卡片 2 */}
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-              <h4 className="font-bold text-primary mb-3 pb-2 border-b border-gray-300">2. 人力資本 (Human Capital)</h4>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-600">人力折舊斜率</span>
-                <span className={`font-bold ${stage2Data.healthRecovery === 'C' ? 'text-red-600' : 'text-green-600'}`}>
-                  {stage2Data.healthRecovery === 'A' ? '持平/正向' : (stage2Data.healthRecovery === 'B' ? '微幅折舊' : '負向下降')}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">*體力恢復度指標，若為負向下降，系統推演將調降未來主動收入的延長預期。</p>
-            </div>
-
-            {/* 卡片 3 */}
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-              <h4 className="font-bold text-primary mb-3 pb-2 border-b border-gray-300">3. 系統容錯率 (Fault Tolerance)</h4>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-600">單點故障防禦力</span>
-                <span className={`font-bold ${safeCashMonths >= 6 ? 'text-green-600' : 'text-red-600'}`}>{safeCashMonths.toFixed(1)} 個月</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">系統綜合判定</span>
-                <span className="font-bold">{statusMap.defense}</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">*主動收入中斷時，純靠安全現金支撐剛性支出的時間。</p>
-            </div>
-
-            {/* 卡片 4 */}
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-              <h4 className="font-bold text-primary mb-3 pb-2 border-b border-gray-300">4. 心理負載 (Psychological Load)</h4>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-600">財務注意力綁定</span>
-                <span className={`font-bold ${stage2Data.monitorFreq === 'C' || stage2Data.monitorFreq === 'D' ? 'text-red-600' : 'text-green-600'}`}>
-                  {stage2Data.monitorFreq === 'C' || stage2Data.monitorFreq === 'D' ? '高度消耗' : '健康隔離'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">系統綜合判定</span>
-                <span className="font-bold">{statusMap.psychological}</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">*測量資產波動對日常注意力的實質干擾程度。</p>
-            </div>
-
-          </div>
-        </div>
-
-        {/* 第三部分：客觀推演 */}
-        <div className="mb-6">
-          <h3 className="text-xl font-bold text-secondary mb-4 border-l-4 border-accent pl-3">三、 客觀推演與敏感度測試</h3>
-          <div className="bg-blue-50/50 p-6 rounded-lg border border-blue-100 space-y-4">
-            <div>
-              <span className="inline-block bg-primary text-white text-xs px-2 py-1 rounded mb-2">現狀慣性推演</span>
-              <p className="text-gray-700 text-sm">
-                若持續維持目前的資金留存率與人力資本折舊狀態，10 年後您的總資產規模預估將推進至 <strong>{formatCurrency(future10YearsNetWorth)}</strong> 區間。然而，您的剛性支出也將因通膨與結構改變同步推升至 <strong>{formatCurrency(future10YearsExpense)}</strong>。
-              </p>
-            </div>
-            <div className="pt-4 border-t border-blue-200">
-              <span className="inline-block bg-accent text-white text-xs px-2 py-1 rounded mb-2">微調變數推演</span>
-              <p className="text-gray-700 text-sm">
-                若能將目前的「隱性耗損資金」有效控管使留存率提升 15%，並透過「自動化配置」降低財務對注意力的綁定，不僅 10 年後總資產能具備更寬裕的安全邊際，亦可大幅減緩心理負載對主動收入高峰期的折損。
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center mt-10">
-          <button 
-            onClick={() => setCurrentStage(1)}
-            className="text-gray-500 hover:text-primary underline text-sm"
-          >
-            重新進行測驗
-          </button>
-        </div>
-
+    <div className="max-w-3xl mx-auto space-y-6 pb-10">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-primary mb-2">專屬財務軌跡與潛力分析</h2>
+        <p className="text-gray-500 text-sm">根據您的現狀與生活慣性，推演出來的客觀數據報告</p>
       </div>
+
+      {/* --- 第一部分：時間軸 (手機友善卡片) --- */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-bold text-secondary flex items-center gap-2">
+          <span className="w-1.5 h-5 bg-accent rounded-full"></span>
+          一、 財務規模變化軌跡
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* 總資產卡片 */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+            <div className="flex items-start justify-between mb-2">
+              <h4 className="font-bold text-gray-700 flex items-center gap-1">
+                總淨值規模
+                <div className="group relative">
+                  <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
+                  <div className="hidden group-hover:block absolute z-10 w-48 p-2 mt-1 text-xs text-white bg-gray-800 rounded shadow-lg">
+                    包含存款與投資，扣除負債後的真實身價。
+                  </div>
+                </div>
+              </h4>
+              {cagr > 5 ? <TrendingUp className="text-green-500 w-5 h-5" /> : <TrendingDown className="text-yellow-500 w-5 h-5" />}
+            </div>
+            
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">3 年前</p>
+                <p className="font-medium text-gray-600">${formatCurrency(pastAssets)}</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-gray-300" />
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">目前</p>
+                <p className="font-bold text-blue-600 text-lg">${formatCurrency(totalNetWorth)}</p>
+              </div>
+            </div>
+            <div className={`mt-4 p-2 rounded text-xs text-center font-medium ${cagr > 5 ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+              年化成長率約 {cagr.toFixed(1)}%
+            </div>
+          </div>
+
+          {/* 支出膨脹卡片 */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-rose-400"></div>
+            <div className="flex items-start justify-between mb-2">
+              <h4 className="font-bold text-gray-700 flex items-center gap-1">
+                每年剛性支出
+                <div className="group relative">
+                  <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
+                  <div className="hidden group-hover:block absolute right-0 z-10 w-48 p-2 mt-1 text-xs text-white bg-gray-800 rounded shadow-lg">
+                    為了維持生存與不違約，每年最少必須花費的錢。
+                  </div>
+                </div>
+              </h4>
+              {expenseMultiplier > 1.1 ? <TrendingUp className="text-red-500 w-5 h-5" /> : <TrendingDown className="text-green-500 w-5 h-5" />}
+            </div>
+
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">目前水位</p>
+                <p className="font-bold text-rose-500 text-lg">${formatCurrency(rigidExpense)}</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-gray-300" />
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">未來 10 年預估</p>
+                <p className="font-medium text-gray-600">${formatCurrency(future10YearsExpense)}</p>
+              </div>
+            </div>
+            <div className={`mt-4 p-2 rounded text-xs text-center font-medium ${expenseMultiplier > 1.1 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+              {expenseMultiplier > 1.1 ? '⚠️ 支出膨脹過快，將抵銷資產成長' : '✅ 支出控制良好，有利資金累積'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- 第二部分：四大健康度指標 (白話文與好壞判定) --- */}
+      <div className="space-y-4 pt-4">
+        <h3 className="text-lg font-bold text-secondary flex items-center gap-2">
+          <span className="w-1.5 h-5 bg-accent rounded-full"></span>
+          二、 財務體質檢驗
+        </h3>
+
+        <div className="grid grid-cols-1 gap-4">
+          
+          {/* 指標 1 */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center bg-gray-50 border-4 border-white shadow-sm">
+              <span className={`text-xl font-bold ${retentionRate >= 70 ? 'text-green-500' : 'text-red-500'}`}>
+                {retentionRate.toFixed(0)}%
+              </span>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                實質資金留存率
+                {retentionRate >= 70 ? <CheckCircle2 className="w-4 h-4 text-green-500"/> : <AlertCircle className="w-4 h-4 text-red-500"/>}
+              </h4>
+              <p className="text-xs text-gray-500 mt-1 mb-2">這代表您「理論上該存下來的錢」與「帳戶實際多出來的錢」的比例。</p>
+              <p className={`text-sm p-2 rounded bg-opacity-10 ${retentionRate >= 70 ? 'bg-green-500 text-green-700' : 'bg-red-500 text-red-700'}`}>
+                {retentionRate >= 70 
+                  ? '🟢 狀態極佳：您具備良好的消費紀律，每一分收入都有確實轉換為個人資產。' 
+                  : '🔴 隱憂提醒：比例低於標準。這代表您有嚴重的「隱形消費」（如無意識的小額疊加或衝動購物），錢在不知不覺中流失了。'}
+              </p>
+            </div>
+          </div>
+
+          {/* 指標 2 */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center gap-4">
+             <div className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center bg-gray-50 border-4 border-white shadow-sm">
+              <span className={`text-xl font-bold ${safeCashMonths >= 6 ? 'text-green-500' : 'text-red-500'}`}>
+                {safeCashMonths.toFixed(0)}
+                <span className="text-xs ml-1">個月</span>
+              </span>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                財務容錯率 (安全水位)
+                {safeCashMonths >= 6 ? <CheckCircle2 className="w-4 h-4 text-green-500"/> : <AlertCircle className="w-4 h-4 text-red-500"/>}
+              </h4>
+              <p className="text-xs text-gray-500 mt-1 mb-2">如果明天突然失去工作，您手上的安全存款能讓家庭安穩生活的時間。</p>
+              <p className={`text-sm p-2 rounded bg-opacity-10 ${safeCashMonths >= 6 ? 'bg-green-500 text-green-700' : 'bg-red-500 text-red-700'}`}>
+                {safeCashMonths >= 6 
+                  ? '🟢 狀態穩健：安全存款大於 6 個月。遇到突發變故時，您有充裕的時間可以調度找工作，不需恐慌。' 
+                  : '🔴 隱憂提醒：安全水位極低。您目前的生活幾乎完全依賴下個月的薪水，承受意外的容錯率非常低。'}
+              </p>
+            </div>
+          </div>
+
+          {/* 指標 3 */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-800">人力資本折舊狀態</h4>
+              <p className="text-xs text-gray-500 mt-1 mb-2">評估您賺取主動收入的「身體本錢」是否正在加速消耗。</p>
+              <p className={`text-sm p-2 rounded bg-opacity-10 ${stage2Data.healthRecovery === 'C' ? 'bg-red-500 text-red-700' : 'bg-green-500 text-green-700'}`}>
+                {stage2Data.healthRecovery === 'C' 
+                  ? '🔴 隱憂提醒：體力恢復變差。目前的財務積累可能是用「透支健康」換來的，未來極易轉化為高昂的醫療開銷，並迫使您提早退出職場。' 
+                  : '🟢 狀態穩健：作息控制得宜。您有較高的機率可以拉長主動收入的高峰期，持續累積本金。'}
+              </p>
+            </div>
+          </div>
+
+          {/* 指標 4 */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-800">心理負載 (財務焦慮度)</h4>
+              <p className="text-xs text-gray-500 mt-1 mb-2">測量您每天需要花多少注意力在盯盤或擔憂金錢上。</p>
+              <p className={`text-sm p-2 rounded bg-opacity-10 ${stage2Data.monitorFreq === 'C' || stage2Data.monitorFreq === 'D' ? 'bg-red-500 text-red-700' : 'bg-blue-500 text-blue-700'}`}>
+                {stage2Data.monitorFreq === 'C' || stage2Data.monitorFreq === 'D'
+                  ? '🔴 隱憂提醒：您對數字波動高度敏感，注意力大量被財務綁定。這不僅容易造成決策疲勞，更可能影響本業的專注度。建議建立自動化投資隔離情緒。' 
+                  : '🔵 狀態良好：您能將財務規劃與日常生活良好隔離，具備成熟的抗壓心態。'}
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* --- 第三部分：未來劇本 (加入積極調整) --- */}
+      <div className="space-y-4 pt-4">
+        <h3 className="text-lg font-bold text-secondary flex items-center gap-2">
+          <span className="w-1.5 h-5 bg-accent rounded-full"></span>
+          三、 未來 10 年的蝴蝶效應
+        </h3>
+        <p className="text-sm text-gray-500 px-2 mb-4">系統為您模擬：如果從今天起改變一個小習慣，未來的財富天花板會有何不同。</p>
+
+        <div className="space-y-3">
+          {/* 劇本 1 */}
+          <div className="bg-white border-l-4 border-gray-400 p-4 rounded-r-xl shadow-sm">
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-sm font-bold text-gray-500">劇本一：維持現狀慣性</span>
+              <span className="text-xl font-bold text-gray-700">${formatCurrency(future10YearsNetWorth)}</span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              維持目前的儲蓄率與生活習慣。您的資產會成長，但若未改善隱形消費或健康透支，未來可能面臨提早退休資金不足的壓力。
+            </p>
+          </div>
+
+          {/* 劇本 2 */}
+          <div className="bg-white border-l-4 border-blue-400 p-4 rounded-r-xl shadow-sm">
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-sm font-bold text-blue-600">劇本二：微幅調整 (修復財務漏水)</span>
+              <span className="text-xl font-bold text-blue-600">${formatCurrency(futureMinorFix)}</span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              只要每月有意識地抓出「隱形開銷」，將真實留存率拉高至 80%，單純靠著守住本金，10 年後就能無痛多出可觀的預備金。
+            </p>
+          </div>
+
+          {/* 劇本 3 */}
+          <div className="bg-white border-l-4 border-accent p-4 rounded-r-xl shadow-md bg-gradient-to-r from-blue-50 to-white">
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-sm font-bold text-accent">劇本三：積極調整 (優化配置與健康)</span>
+              <span className="text-2xl font-bold text-accent">${formatCurrency(futureAggressive)}</span>
+            </div>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              除了修復漏水，若您能將過多的「閒置安全現金」轉入抗通膨資產，並將部分預算投資於「運動與睡眠」使高收入期多延長 3 年。在複利雙引擎推動下，將大幅拉開與現狀的差距。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center pt-8">
+        <button 
+          onClick={() => setCurrentStage(1)}
+          className="text-gray-400 hover:text-primary underline text-sm"
+        >
+          重新進行盤點
+        </button>
+      </div>
+
     </div>
   );
 }
