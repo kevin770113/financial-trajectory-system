@@ -6,15 +6,12 @@ export default function Stage3Form() {
   const { stage1Data, stage2Data, stage3Data, updateStage3, setCurrentStage, setComputedMetrics } = useApp();
   const [triggers, setTriggers] = useState([]);
 
-  // 組件載入時，立刻呼叫大腦引擎計算觸發條件
   useEffect(() => {
     const metrics = calculateMetrics(stage1Data, stage2Data);
     setTriggers(metrics.triggers);
-    // 預先儲存運算結果給儀表板使用
     setComputedMetrics(metrics);
   }, [stage1Data, stage2Data, setComputedMetrics]);
 
-  // 定義所有的動態題庫
   const allQuestions = {
     inflation: {
       id: 'inflation',
@@ -84,8 +81,9 @@ export default function Stage3Form() {
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-sm border-t-4 border-primary">
-      <h2 className="text-2xl font-bold text-primary mb-2">第三階段：動態情境深挖</h2>
-      <p className="text-gray-500 mb-6 text-sm">系統已根據您的資產結構特徵，為您精選以下情境題。</p>
+      {/* 改版：柔化標題，移除系統動態深挖字眼 */}
+      <h2 className="text-2xl font-bold text-primary mb-2">關於未來的財務藍圖</h2>
+      <p className="text-gray-500 mb-6 text-sm">最後，我們想進一步了解您對未來資金調度與風險的偏好。</p>
 
       <div className="space-y-8">
         {triggers.map((triggerKey) => {
@@ -94,6 +92,7 @@ export default function Stage3Form() {
           
           return (
             <div key={q.id} className="bg-gray-50 p-4 md:p-5 rounded-lg border border-gray-100">
+              {/* 改版：徹底移除 [條件觸發] 的開發者除錯標籤 */}
               <h3 className="font-semibold text-gray-800 mb-4">{q.title}</h3>
               <div className="space-y-3">
                 {q.options.map((opt) => {
@@ -123,13 +122,13 @@ export default function Stage3Form() {
           onClick={() => setCurrentStage(2)}
           className="w-1/3 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
         >
-          回上一步
+          上一頁
         </button>
         <button 
           onClick={() => setCurrentStage(4)}
           className="w-2/3 bg-primary text-white py-3 rounded-lg font-semibold hover:bg-secondary transition-colors"
         >
-          產出全人理財診斷報告
+          看分析結果
         </button>
       </div>
     </div>
