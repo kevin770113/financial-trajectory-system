@@ -31,14 +31,22 @@ export default function Dashboard() {
   const future10YearsNetWorth = totalNetWorth * Math.pow(1 + (baseGrowthRate / 100), 10) + ((theoreticalSurplus * (retentionRate / 100)) * 10);
   const future10YearsExpense = rigidExpense * expenseMultiplier * Math.pow(1.02, 10); // 2% 基礎通膨
   
-  // 劇本二：微幅調整 (修復漏水，將留存率拉高至 80%)
-  const futureMinorFix = totalNetWorth * Math.pow(1 + (baseGrowthRate / 100), 10) + ((theoreticalSurplus * 0.8) * 10);
+  // 邏輯改版：解決「微幅調整金額比現狀少」的 Bug，取使用者現狀或 80% 之中的高者
+  const optimizedRetentionRate = Math.max(retentionRate, 80);
+
+  // 劇本二：微幅調整 (修復漏水，將留存率拉高至至少 80%)
+  const futureMinorFix = totalNetWorth * Math.pow(1 + (baseGrowthRate / 100), 10) + ((theoreticalSurplus * (optimizedRetentionRate / 100)) * 10);
 
   // 劇本三：積極調整 (修復漏水 + 將超過6個月的安全現金轉入投資提高整體報酬率 3% + 投資健康延長高收入期多賺3年)
   const optimizedGrowthRate = baseGrowthRate + 3;
-  const futureAggressive = totalNetWorth * Math.pow(1 + (optimizedGrowthRate / 100), 10) + ((theoreticalSurplus * 0.8) * 13);
+  const futureAggressive = totalNetWorth * Math.pow(1 + (optimizedGrowthRate / 100), 10) + ((theoreticalSurplus * (optimizedRetentionRate / 100)) * 13);
 
-  const formatCurrency = (num) => Math.round(num || 0).toLocaleString();
+  // 格式改版：將數字除以萬，並加上單位，解決手機顯示過長的問題
+  const formatCurrency = (num) => {
+    if (!num || num === 0) return '$0 萬';
+    const wan = Math.floor(num / 10000);
+    return `$${wan.toLocaleString()} 萬`;
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-10">
@@ -74,12 +82,12 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mt-4">
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-1">3 年前</p>
-                <p className="font-medium text-gray-600">${formatCurrency(pastAssets)}</p>
+                <p className="font-medium text-gray-600">{formatCurrency(pastAssets)}</p>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-300" />
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-1">目前</p>
-                <p className="font-bold text-blue-600 text-lg">${formatCurrency(totalNetWorth)}</p>
+                <p className="font-bold text-blue-600 text-lg">{formatCurrency(totalNetWorth)}</p>
               </div>
             </div>
             <div className={`mt-4 p-2 rounded text-xs text-center font-medium ${cagr > 5 ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
@@ -106,12 +114,12 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mt-4">
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-1">目前水位</p>
-                <p className="font-bold text-rose-500 text-lg">${formatCurrency(rigidExpense)}</p>
+                <p className="font-bold text-rose-500 text-lg">{formatCurrency(rigidExpense)}</p>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-300" />
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-1">未來 10 年預估</p>
-                <p className="font-medium text-gray-600">${formatCurrency(future10YearsExpense)}</p>
+                <p className="font-medium text-gray-600">{formatCurrency(future10YearsExpense)}</p>
               </div>
             </div>
             <div className={`mt-4 p-2 rounded text-xs text-center font-medium ${expenseMultiplier > 1.1 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
@@ -215,7 +223,7 @@ export default function Dashboard() {
           <div className="bg-white border-l-4 border-gray-400 p-4 rounded-r-xl shadow-sm">
             <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-bold text-gray-500">劇本一：維持現狀慣性</span>
-              <span className="text-xl font-bold text-gray-700">${formatCurrency(future10YearsNetWorth)}</span>
+              <span className="text-xl font-bold text-gray-700">{formatCurrency(future10YearsNetWorth)}</span>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed">
               維持目前的儲蓄率與生活習慣。您的資產會成長，但若未改善隱形消費或健康透支，未來可能面臨提早退休資金不足的壓力。
@@ -226,10 +234,10 @@ export default function Dashboard() {
           <div className="bg-white border-l-4 border-blue-400 p-4 rounded-r-xl shadow-sm">
             <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-bold text-blue-600">劇本二：微幅調整 (修復財務漏水)</span>
-              <span className="text-xl font-bold text-blue-600">${formatCurrency(futureMinorFix)}</span>
+              <span className="text-xl font-bold text-blue-600">{formatCurrency(futureMinorFix)}</span>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed">
-              只要每月有意識地抓出「隱形開銷」，將真實留存率拉高至 80%，單純靠著守住本金，10 年後就能無痛多出可觀的預備金。
+              只要每月有意識地抓出「隱形開銷」，將真實留存率維持在 80% 的高水位，單純靠著守住本金，10 年後就能無痛多出可觀的預備金。
             </p>
           </div>
 
@@ -237,7 +245,7 @@ export default function Dashboard() {
           <div className="bg-white border-l-4 border-accent p-4 rounded-r-xl shadow-md bg-gradient-to-r from-blue-50 to-white">
             <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-bold text-accent">劇本三：積極調整 (優化配置與健康)</span>
-              <span className="text-2xl font-bold text-accent">${formatCurrency(futureAggressive)}</span>
+              <span className="text-2xl font-bold text-accent">{formatCurrency(futureAggressive)}</span>
             </div>
             <p className="text-xs text-gray-600 leading-relaxed">
               除了修復漏水，若您能將過多的「閒置安全現金」轉入抗通膨資產，並將部分預算投資於「運動與睡眠」使高收入期多延長 3 年。在複利雙引擎推動下，將大幅拉開與現狀的差距。
